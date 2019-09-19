@@ -15,6 +15,7 @@
 
 #define DATA_PIN 9
 
+#define TIMEOUT  1000   // 1s
 
 CRGB leds[NUM_LEDS];
 
@@ -25,10 +26,12 @@ typedef struct _rgb_t{
 }rgb_t;
 
 rgb_t Colors;
-bool update;
+bool update;          // is update
+uint32_t last_update; // last i2c communicate time
 
 
 void receiveEvent(int x);
+void led_loop();
 
 void setup() {
   Wire.begin(NCP5623_I2C_ADD); 
@@ -46,22 +49,34 @@ void setup() {
   }
   memset(&Colors, 0, sizeof(rgb_t));
   update = false;
+  last_update = 0;
 }
 
 void loop() {
-  if(update){
-    update = false;
-    for(uint8_t i=0; i<NUM_LEDS; i++){
-      leds[i] = CRGB(Colors.r, Colors.g, Colors.b);
+  led_loop();
+}
+
+void led_loop(){
+  if(millis() - last_update < TIMEOUT){
+    if(update){
+      update = false;
+      for(uint8_t i=0; i<NUM_LEDS; i++){
+        leds[i] = CRGB(Colors.r, Colors.g, Colors.b);
+        FastLED.show();
+      }
+    }else{
       FastLED.show();
     }
   }else{
-    FastLED.show();
+    for(uint8_t i=0; i<NUM_LEDS; i++){
+      leds[i] = CRGB::Black;
+      FastLED.show();
+    }
   }
 }
 
-
 void receiveEvent(int x) {
+  last_update = millis();
   update = true;
   while(Wire.available()){
     uint8_t val = Wire.read();
