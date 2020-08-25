@@ -14,11 +14,13 @@
 
 #define NUM_LEDS 3
 
-#define DATA_PIN 9
+#define SYNC_DATA_PIN 9
+#define NAV_DATA_PIN  8
 
-#define TIMEOUT  1000   // 1s
+#define TIMEOUT  800   // ms
 
-CRGB leds[NUM_LEDS];
+CRGB sync_leds[NUM_LEDS];
+CRGB nav_leds[NUM_LEDS];
 
 typedef struct _rgb_t{
   uint8_t r;
@@ -28,7 +30,7 @@ typedef struct _rgb_t{
 
 rgb_t Colors;
 bool update;          // is update
-uint32_t last_update; // last i2c communicate time
+uint32_t last_time; // last flashing time
 
 
 void receiveEvent(int x);
@@ -40,19 +42,24 @@ void setup() {
   Wire.onReceive(receiveEvent);
   Serial.begin(57600); 
   soft_info();
-  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+
+  FastLED.addLeds<NEOPIXEL, SYNC_DATA_PIN>(sync_leds, NUM_LEDS);
+  FastLED.addLeds<NEOPIXEL, NAV_DATA_PIN>(nav_leds, NUM_LEDS);
+
   for(uint8_t i=0; i<NUM_LEDS; i++){
-    leds[i] = CRGB::Green;
+    sync_leds[i] = CRGB::Green;
+    nav_leds[i] = CRGB::Green;
     FastLED.show();
   }
   delay(100);
   for(uint8_t i=0; i<NUM_LEDS; i++){
-    leds[i] = CRGB::Black;
+    sync_leds[i] = CRGB::Black;
+    nav_leds[i] = CRGB::Black;
     FastLED.show();
   }
   memset(&Colors, 0, sizeof(rgb_t));
   update = false;
-  last_update = 0;
+  last_time = 0;
 }
 
 void loop() {
@@ -60,26 +67,28 @@ void loop() {
 }
 
 void led_loop(){
-  if(millis() - last_update < TIMEOUT){
-    if(update){
-      update = false;
-      for(uint8_t i=0; i<NUM_LEDS; i++){
-        leds[i] = CRGB(Colors.r, Colors.g, Colors.b);
-        FastLED.show();
-      }
-    }else{
-      FastLED.show();
+  if(millis() - last_time < TIMEOUT){
+    for(uint8_t i=0; i<NUM_LEDS; i++){
+      nav_leds[i] = CRGB::Red;
+    }
+  }else if(millis() - last_time >= TIMEOUT && millis() - last_time < 2*TIMEOUT ){
+    for(uint8_t i=0; i<NUM_LEDS; i++){
+      nav_leds[i] = CRGB::Black;
     }
   }else{
-    for(uint8_t i=0; i<NUM_LEDS; i++){
-      leds[i] = CRGB::Black;
-      FastLED.show();
-    }
+    last_time = millis();
   }
+
+  if(update){
+      update = false;
+      for(uint8_t i=0; i<NUM_LEDS; i++){
+        sync_leds[i] = CRGB(Colors.r, Colors.g, Colors.b);
+      }
+  }
+  FastLED.show();
 }
 
 void receiveEvent(int x) {
-  last_update = millis();
   update = true;
   while(Wire.available()){
     uint8_t val = Wire.read();
