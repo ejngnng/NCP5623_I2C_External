@@ -8,6 +8,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "FastLED.h"
+#include "version.h"
 
 #define NCP5623_I2C_ADD   0x38
 
@@ -32,11 +33,13 @@ uint32_t last_update; // last i2c communicate time
 
 void receiveEvent(int x);
 void led_loop();
+void soft_info();
 
 void setup() {
   Wire.begin(NCP5623_I2C_ADD); 
   Wire.onReceive(receiveEvent);
   Serial.begin(57600); 
+  soft_info();
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   for(uint8_t i=0; i<NUM_LEDS; i++){
     leds[i] = CRGB::Green;
@@ -124,3 +127,22 @@ void receiveEvent(int x) {
     }
   }
 }
+
+void soft_info(){
+  String name = THISFIRMWARE;
+  name += "_";
+
+  name += THISVERSION;
+
+  String version  = THISVERSION;
+
+  String dsp = "Ardupilot External LEDs ";
+  
+  Serial.println("*************************************************");
+  Serial.println("Description: " + dsp);
+  Serial.println("Name: " + name);
+  Serial.println("Version: " + version);
+  Serial.println("Author: ninja");
+  Serial.println("*************************************************");
+}
+
